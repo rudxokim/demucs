@@ -161,15 +161,19 @@ def main():
                         default=320,
                         type=int,
                         help="Bitrate of converted mp3.")
+    parser.add_argument("--raw",
+                        default=False,
+                        help="save raw numpy array")
 
     args = parser.parse_args()
     name = args.name + ".th"
     if args.quantized:
         name += ".gz"
 
+    # download pretrained model file
     model_path = args.models / name
     sha256 = PRETRAINED_MODELS.get(name)
-    if not model_path.is_file():
+    if not model_path.is_file(): 
         if sha256 is None:
             print(f"No pretrained model {args.name}", file=sys.stderr)
             sys.exit(1)
@@ -186,6 +190,7 @@ def main():
     if sha256 is not None:
         verify_file(model_path, sha256)
     model = load_model(model_path).to(args.device)
+
     if args.quantized:
         args.name += "_quantized"
     out = args.out / args.name
@@ -200,7 +205,9 @@ def main():
                 file=sys.stderr)
             continue
         print(f"Separating track {track}")
+        
         wav = AudioFile(track).read(streams=0, samplerate=model.samplerate, channels=model.audio_channels).to(args.device)
+
         # Round to nearest short integer for compatibility with how MusDB load audio with stempeg.
         wav = (wav * 2**15).round() / 2**15
         ref = wav.mean(0)
